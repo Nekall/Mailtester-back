@@ -25,9 +25,8 @@ app.get("/", (req, res) => {
 
 app.get("/one-mail/:email", async (req, res) => {
   const email = req.params.email;
-  console.log("verifyDomain", verifyDomain(email));
-  console.log("checkif", await verifyEmail(email))
-  if ((await verifyEmailComposition(email)) && (await verifyDomain(email)) && (await verifyEmail(email))) {
+  //console.log("checkif", await verifyEmail(email))
+  if ((await verifyEmailComposition(email)) && (await verifyDomain(email))) {
     return res
       .status(200)
       .json({ success: true, message: `${email} is a valid email address.` });
