@@ -5,17 +5,26 @@ const app = express();
 const port = 3333;
 
 app.get("/", (req, res) => {
-  res.send("Hello World!");s
+  return res
+    .status(200)
+    .json({ success: true, message: "Welcome on Mailtester API" });
 });
 
-app.get("/one-mail/:email", (req, res) => {
+app.get("/one-mail/:email", async (req, res) => {
   const email = req.params.email;
-  if (verifyEmailComposition(email)) {
-    if (verifyDomain(email.split("@")[1])) {
-      return res.send(`${email} is a valid email address.`);
-    }
+  console.log("verifyDomain", verifyDomain(email));
+  console.log("checkif", (await verifyEmailComposition(email)) , (await verifyDomain(email)))
+  if ((await verifyEmailComposition(email)) && (await verifyDomain(email))) {
+    return res
+      .status(200)
+      .json({ success: true, message: `${email} is a valid email address.` });
   }
-  return res.send(`${email} is not a valid email address.`);
+  return res
+    .status(406)
+    .json({
+      success: false,
+      message: `${email} is NOT a valid email address.`,
+    });
 });
 
 app.post("/multiple-mails", (req, res) => {
@@ -24,7 +33,7 @@ app.post("/multiple-mails", (req, res) => {
     const invalidEmails = [];
     emails.forEach((email) => {
         if (verifyEmailComposition(email)) {
-            if (verifyDomain(email.split("@")[1])) {
+            if (verifyDomain(email)) {
                 validEmails.push(email);
             } else {
                 invalidEmails.push(email);
@@ -41,29 +50,22 @@ app.post("/multiple-mails", (req, res) => {
 
 const verifyEmailComposition = async (email) => {
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
+};
 
-  if (regex.test(email)) {
-    console.log("Mail address valid.");
-    return true;
-  } else {
-    console.log("Mail address invalid.");
-    return false;
+const verifyDomain = async (email) => {
+  const url = new URL(`https://${email.split("@")[1]}`);
+  let valid = false;
+  try {
+    let response = await fetch(url);
+    valid = response.ok;
+  } catch {
+    console.error("Domain is not valid.");
+    valid = false;
   }
+  return valid;
 };
 
-const verifyDomain = async (domain) => {
-  fetch(domain)
-    .then((response) => {
-      if (response.ok) {
-        console.log("Domain is valid.");
-      } else {
-        console.log("Erreur : " + response.status);
-      }
-    })
-    .catch((error) => {
-      console.log("Erreur : " + error);
-    });
-};
 
 const verifyEmail = async (email) => {
   const transporter = nodemailer.createTransport({
