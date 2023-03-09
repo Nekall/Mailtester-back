@@ -13,6 +13,7 @@ app.get("/", (req, res) => {
 
 app.get("/one-mail/:email", async (req, res) => {
   const email = req.params.email;
+  console.log("Check", email, " in progress...")
   let checkAll = await validate({
     email: email,
     sender: email,
@@ -22,6 +23,8 @@ app.get("/one-mail/:email", async (req, res) => {
     validateDisposable: true,
     validateSMTP: true,
   });
+
+  console.log(checkAll);
   if (checkAll.valid) {
     return res
       .status(200)
