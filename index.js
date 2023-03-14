@@ -24,7 +24,7 @@ const validateEmail = (email) => {
       if (err || !mxRecords || mxRecords.length === 0) {
         resolve(false);
       } else {
-        const smtp = net.createConnection(25, mxRecords[0].exchange);
+        const smtp = net.createConnection(587, mxRecords[0].exchange);
         let connected = false;
         const timeout = 10000; // 10 seconds
         const timeoutId = setTimeout(() => {
