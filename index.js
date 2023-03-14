@@ -19,32 +19,44 @@ const validateEmail = (email) => {
   }
 
   const domain = email.split('@')[1];
+  const ports = [25, 587, 465];
+  
   return new Promise((resolve) => {
-    dns.resolveMx(domain, (err, mxRecords) => {
-      if (err || !mxRecords || mxRecords.length === 0) {
+    const tryNextPort = (index) => {
+      if (index >= ports.length) {
         resolve(false);
-      } else {
-        const smtp = net.createConnection(587, mxRecords[0].exchange);
-        let connected = false;
-        const timeout = 10000; // 10 seconds
-        const timeoutId = setTimeout(() => {
-          if (!connected) {
-            smtp.destroy();
-            resolve(false);
-          }
-        }, timeout);
-        smtp.on('connect', () => {
-          console.log(smtp)
-          connected = true;
-          clearTimeout(timeoutId);
-          smtp.destroy();
-          resolve(true);
-        });
-        smtp.on('error', () => {
-          resolve(false);
-        });
+        return;
       }
-    });
+      
+      const port = ports[index];
+      
+      dns.resolveMx(domain, (err, mxRecords) => {
+        if (err || !mxRecords || mxRecords.length === 0) {
+          tryNextPort(index + 1);
+        } else {
+          const smtp = net.createConnection(port, mxRecords[0].exchange);
+          let connected = false;
+          const timeout = 10000; // 10 seconds
+          const timeoutId = setTimeout(() => {
+            if (!connected) {
+              smtp.destroy();
+              tryNextPort(index + 1);
+            }
+          }, timeout);
+          smtp.on('connect', () => {
+            connected = true;
+            clearTimeout(timeoutId);
+            smtp.destroy();
+            resolve(true);
+          });
+          smtp.on('error', () => {
+            tryNextPort(index + 1);
+          });
+        }
+      });
+    };
+    
+    tryNextPort(0);
   });
 };
 
@@ -59,16 +71,14 @@ app.get("/one-mail/:email", async (req, res) => {
         .status(200)
         .json({
           success: true,
-          message: `${email} is a valid email address.`,
-          details: response,
+          message: `${email} is a valid email address.`
         });
     } else {
       return res
         .status(406)
         .json({
           success: false, 
-          message: `${email} is NOT a valid email address.`,
-          details: response,
+          message: `${email} is NOT a valid email address.`
         });
     }
   })
@@ -77,11 +87,11 @@ app.get("/one-mail/:email", async (req, res) => {
       .status(406)
       .json({
         success: false,
-        message: `${email} is NOT a valid email address.`,
-        details: err,
+        message: `${email} is NOT a valid email address.`
       });
   });
 });
+
 
 app.post("/multiple-mails", (req, res) => {
     //const emails = req.body.emails;
