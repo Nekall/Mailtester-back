@@ -1,7 +1,8 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 import express from "express";
-import { validate } from "deep-email-validator";
+import net from "net";
+import dns from "dns";
 const app = express();
 const port = 3333;
 
@@ -11,35 +12,75 @@ app.get("/", (req, res) => {
     .json({ success: true, message: "Welcome on Mailtester API" });
 });
 
+const validateEmail = (email) => {
+  const validSyntax = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,}$/.test(email);
+  if (!validSyntax) {
+    return Promise.resolve(false);
+  }
+
+  const domain = email.split('@')[1];
+  return new Promise((resolve) => {
+    dns.resolveMx(domain, (err, mxRecords) => {
+      if (err || !mxRecords || mxRecords.length === 0) {
+        resolve(false);
+      } else {
+        const smtp = net.createConnection(25, mxRecords[0].exchange);
+        let connected = false;
+        const timeout = 10000; // 10 seconds
+        const timeoutId = setTimeout(() => {
+          if (!connected) {
+            smtp.destroy();
+            resolve(false);
+          }
+        }, timeout);
+        smtp.on('connect', () => {
+          console.log(smtp)
+          connected = true;
+          clearTimeout(timeoutId);
+          smtp.destroy();
+          resolve(true);
+        });
+        smtp.on('error', () => {
+          resolve(false);
+        });
+      }
+    });
+  });
+};
+
 app.get("/one-mail/:email", async (req, res) => {
   const email = req.params.email;
   console.log("Check", email, " in progress...")
-  let checkAll = await validate({
-    email: email,
-    sender: email,
-    validateRegex: true,
-    validateMx: true,
-    validateTypo: false,
-    validateDisposable: true,
-    validateSMTP: true,
-  });
 
-  console.log(checkAll);
-  if (checkAll.valid) {
+  validateEmail(email)
+  .then((response) => {
+    if(response){
+      return res
+        .status(200)
+        .json({
+          success: true,
+          message: `${email} is a valid email address.`,
+          details: response,
+        });
+    } else {
+      return res
+        .status(406)
+        .json({
+          success: false, 
+          message: `${email} is NOT a valid email address.`,
+          details: response,
+        });
+    }
+  })
+  .catch((err) => {
     return res
-      .status(200)
+      .status(406)
       .json({
-        success: true,
-        message: `${email} is a valid email address.`,
-        details: checkAll, });
-  }
-  return res
-    .status(406)
-    .json({
-      success: false,
-      message: `${email} is NOT a valid email address.`,
-      details: checkAll,
-    });
+        success: false,
+        message: `${email} is NOT a valid email address.`,
+        details: err,
+      });
+  });
 });
 
 app.post("/multiple-mails", (req, res) => {
