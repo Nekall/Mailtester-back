@@ -36,7 +36,7 @@ const validateEmail = (email) => {
         } else {
           const smtp = net.createConnection(port, mxRecords[0].exchange);
           let connected = false;
-          const timeout = 10000; // 10 seconds
+          const timeout = 3000; // 3 seconds
           const timeoutId = setTimeout(() => {
             if (!connected) {
               smtp.destroy();
