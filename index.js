@@ -4,7 +4,7 @@ import dns from "dns";
 const app = express();
 const port = 3333;
 
-app.get("/", (req, res) => {
+app.get("/", (_, res) => {
   return res
     .status(200)
     .json({ success: true, message: "Welcome on Mailtester API" });
@@ -58,9 +58,8 @@ const validateEmail = (email) => {
   });
 };
 
-app.get("/one-mail/:email", async (req, res) => {
+app.get("/single-mail/:email", async (req, res) => {
   const email = req.params.email;
-  console.log("Check", email, " in progress...")
 
   validateEmail(email)
   .then((response) => {
@@ -85,14 +84,16 @@ app.get("/one-mail/:email", async (req, res) => {
       .status(406)
       .json({
         success: false,
-        message: `${email} is NOT a valid email address.`
+        message: `${email} is NOT a valid email address.`,
+        error: err
       });
   });
 });
 
 
-app.post("/multiple-mails", (req, res) => {
-    //const emails = req.body.emails;
+app.post("/bulk-mails", (req, res) => {
+    const emails = req.body.emails;
+    
     return res
     .status(418)
     .json({
